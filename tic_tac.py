@@ -1,36 +1,70 @@
 import time
 import random
 import os
+import sys
 
-# Cores ANSI
+if sys.platform == "win32":
+    os.system("chcp 65001 > nul")
+
 RESET = "\033[0m"
 RED = "\033[91m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
 BLUE = "\033[94m"
 CYAN = "\033[96m"
+MAGENTA = "\033[95m"
 BOLD = "\033[1m"
+DIM = "\033[2m"
 
 class Board:
     def __init__(self):
         self.cells = [" " for _ in range(9)]
 
-    def display(self):
+    def display(self, show_numbers=False):
         os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"\n {BOLD}{CYAN}=== TABULEIRO JOGO DA VELHA ==={RESET}")
-        
-        def format_cell(cell):
-            if cell == "X": return f"{RED}{BOLD}X{RESET}"
-            if cell == "O": return f"{BLUE}{BOLD}O{RESET}"
+        print(f"\n  {BOLD}{CYAN}[ JOGO DA VELHA ]{RESET}\n")
+
+        def format_cell(cell, index):
+            if cell == "X":
+                return f"{RED}{BOLD}X{RESET}"
+            elif cell == "O":
+                return f"{BLUE}{BOLD}O{RESET}"
+            elif show_numbers:
+                return f"{DIM}{index + 1}{RESET}"
             return " "
 
-        print("\n")
-        print(f"  {format_cell(self.cells[0])} | {format_cell(self.cells[1])} | {format_cell(self.cells[2])} ")
-        print(" ---+---+---")
-        print(f"  {format_cell(self.cells[3])} | {format_cell(self.cells[4])} | {format_cell(self.cells[5])} ")
-        print(" ---+---+---")
-        print(f"  {format_cell(self.cells[6])} | {format_cell(self.cells[7])} | {format_cell(self.cells[8])} ")
-        print("\n")
+        print(f"       {DIM}1     2     3{RESET}")
+        print(f"     +-----+-----+-----+")
+        print(f"  A  |  {format_cell(self.cells[0], 0)}  |  {format_cell(self.cells[1], 1)}  |  {format_cell(self.cells[2], 2)}  |")
+        print(f"     +-----+-----+-----+")
+        print(f"  B  |  {format_cell(self.cells[3], 3)}  |  {format_cell(self.cells[4], 4)}  |  {format_cell(self.cells[5], 5)}  |")
+        print(f"     +-----+-----+-----+")
+        print(f"  C  |  {format_cell(self.cells[6], 6)}  |  {format_cell(self.cells[7], 7)}  |  {format_cell(self.cells[8], 8)}  |")
+        print(f"     +-----+-----+-----+")
+        print()
+
+    def display_with_hint(self, move):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print(f"\n  {BOLD}{CYAN}[ JOGO DA VELHA ]{RESET}\n")
+
+        def format_cell(cell, index):
+            if cell == "X":
+                return f"{RED}{BOLD}X{RESET}"
+            elif cell == "O":
+                return f"{BLUE}{BOLD}O{RESET}"
+            elif index == move:
+                return f"{GREEN}{BOLD}*{RESET}"
+            return " "
+
+        print(f"       {DIM}1     2     3{RESET}")
+        print(f"     +-----+-----+-----+")
+        print(f"  A  |  {format_cell(self.cells[0], 0)}  |  {format_cell(self.cells[1], 1)}  |  {format_cell(self.cells[2], 2)}  |")
+        print(f"     +-----+-----+-----+")
+        print(f"  B  |  {format_cell(self.cells[3], 3)}  |  {format_cell(self.cells[4], 4)}  |  {format_cell(self.cells[5], 5)}  |")
+        print(f"     +-----+-----+-----+")
+        print(f"  C  |  {format_cell(self.cells[6], 6)}  |  {format_cell(self.cells[7], 7)}  |  {format_cell(self.cells[8], 8)}  |")
+        print(f"     +-----+-----+-----+")
+        print()
 
     def update(self, position, marker):
         if self.cells[position] == " ":
@@ -40,17 +74,33 @@ class Board:
 
     def is_winner(self, marker):
         win_conditions = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8], # Linhas
-            [0, 3, 6], [1, 4, 7], [2, 5, 8], # Colunas
-            [0, 4, 8], [2, 4, 6]             # Diagonais
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
         ]
         for condition in win_conditions:
             if all(self.cells[i] == marker for i in condition):
-                return True
+                return condition
         return False
 
     def is_full(self):
         return " " not in self.cells
+
+    def can_win(self):
+        win_conditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ]
+        for condition in win_conditions:
+            x_count = sum(1 for i in condition if self.cells[i] == "X")
+            o_count = sum(1 for i in condition if self.cells[i] == "O")
+            if x_count == 0 or o_count == 0:
+                return True
+        return False
+
+    def get_available_moves(self):
+        return [i for i, cell in enumerate(self.cells) if cell == " "]
 
     def reset(self):
         self.cells = [" " for _ in range(9)]
@@ -59,145 +109,260 @@ class Player:
     def __init__(self, name, marker):
         self.name = name
         self.marker = marker
+        self.wins = 0
 
 class HumanPlayer(Player):
     def get_move(self, board):
         while True:
             try:
-                move = int(input(f"{self.name} ({self.marker}), escolha uma posição (1-9): ")) - 1
-                if 0 <= move <= 8 and board.cells[move] == " ":
-                    return move
+                move = input(f"{BOLD}{self.name}{RESET} ({self.marker}), escolha sua posicao: ").strip().upper()
+                if move in ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']:
+                    pos_map = {'A1': 0, 'A2': 1, 'A3': 2, 'B1': 3, 'B2': 4, 'B3': 5, 'C1': 6, 'C2': 7, 'C3': 8}
+                    pos = pos_map[move]
+                    if board.cells[pos] == " ":
+                        return pos
+                    print(f"{RED}  [X] Posicao ja ocupada!{RESET}")
+                elif move in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
+                    pos = int(move) - 1
+                    if board.cells[pos] == " ":
+                        return pos
+                    print(f"{RED}  [X] Posicao ja ocupada!{RESET}")
                 else:
-                    print("Posição ocupada ou inválida. Tente novamente.")
+                    print(f"{RED}  [X] Posicao invalida! Use A1-C3 ou 1-9{RESET}")
             except ValueError:
-                print("Por favor, insira um número de 1 a 9.")
+                print(f"{RED}  [X] Entrada invalida!{RESET}")
 
 class AIPlayer(Player):
+    def __init__(self, name, marker, difficulty="medium"):
+        super().__init__(name, marker)
+        self.difficulty = difficulty
+
     def get_move(self, board):
-        print(f"{self.name} pensando...")
-        time.sleep(1)
-        # 1. Tentar vencer
-        for i in range(9):
-            if board.cells[i] == " ":
-                board.cells[i] = self.marker
-                if board.is_winner(self.marker):
-                    board.cells[i] = " " # Reset temporário
-                    return i
-                board.cells[i] = " "
+        self.board = board
+        move_labels = ['A1', 'B1', 'C1', 'A2', 'B2', 'C2', 'A3', 'B3', 'C3']
 
-        # 2. Bloquear oponente
-        opponent_marker = "O" if self.marker == "X" else "X"
-        for i in range(9):
-            if board.cells[i] == " ":
-                board.cells[i] = opponent_marker
-                if board.is_winner(opponent_marker):
-                    board.cells[i] = " "
-                    return i
-                board.cells[i] = " "
+        if self.difficulty == "easy":
+            time.sleep(0.5)
+            return random.choice(board.get_available_moves())
 
-        # 3. Escolher aleatório
-        available_moves = [i for i, cell in enumerate(board.cells) if cell == " "]
-        return random.choice(available_moves)
+        elif self.difficulty == "medium":
+            move = self.minimax(board, self.marker)['position']
+            time.sleep(0.8)
+            print(f"{MAGENTA}  [*] Computador escolheu: {move_labels[move]}{RESET}")
+            time.sleep(0.5)
+            return move
+
+        else:
+            move = self.minimax(board, self.marker)['position']
+            time.sleep(0.8)
+            print(f"{MAGENTA}  [*] Computador (Dificil) escolheu: {move_labels[move]}{RESET}")
+            time.sleep(0.5)
+            return move
+
+    def minimax(self, board, player, depth=0):
+        available_moves = board.get_available_moves()
+        opponent = "O" if player == "X" else "X"
+
+        if board.is_winner(self.marker):
+            return {'score': 10 - depth}
+        elif board.is_winner(opponent):
+            return {'score': depth - 10}
+        elif board.is_full():
+            return {'score': 0}
+
+        if len(available_moves) == 9:
+            return {'position': 4, 'score': 0}
+
+        moves = []
+        for move in available_moves:
+            board.cells[move] = player
+            result = self.minimax(board, opponent, depth + 1)
+            result['position'] = move
+            board.cells[move] = " "
+            moves.append(result)
+
+        if player == self.marker:
+            best = max(moves, key=lambda x: x['score'])
+        else:
+            best = min(moves, key=lambda x: x['score'])
+
+        return best
 
 class TicTacToeGame:
     def __init__(self, player1, player2):
         self.board = Board()
         self.players = [player1, player2]
-        self.start_time = 0
+        self.current_player_idx = 0
+        self.moves_count = 0
 
     def play_round(self):
         self.board.reset()
-        self.start_time = time.time()
-        current_player_idx = 0
+        self.current_player_idx = 0
+        self.moves_count = 0
+
+        self._print_round_start()
 
         while True:
-            self.board.display()
-            current_player = self.players[current_player_idx]
-            
+            self.board.display(show_numbers=True)
+            self._print_score()
+
+            current_player = self.players[self.current_player_idx]
+            marker = f"{RED}X{RESET}" if current_player.marker == "X" else f"{BLUE}O{RESET}"
+            print(f"\n  {BOLD}[>] Vez de {current_player.name} {marker}{RESET}")
+
             move = current_player.get_move(self.board)
+            self.moves_count += 1
+
+            self.board.display_with_hint(move)
+            time.sleep(0.3)
             self.board.update(move, current_player.marker)
 
-            if self.board.is_winner(current_player.marker):
+            win_line = self.board.is_winner(current_player.marker)
+            if win_line:
                 self.board.display()
-                total_time = time.time() - self.start_time
-                print(f"{GREEN}{BOLD}Parabéns! {current_player.name} venceu esta rodada!{RESET}")
-                print(f"{YELLOW}Tempo total da rodada: {total_time:.2f} segundos.{RESET}")
+                self._print_victory(current_player, win_line)
                 return current_player
 
-            if self.board.is_full():
+            if not self.board.can_win():
                 self.board.display()
-                total_time = time.time() - self.start_time
-                print(f"{BLUE}Empate!{RESET}")
-                print(f"{YELLOW}Tempo total da rodada: {total_time:.2f} segundos.{RESET}")
+                self._print_draw()
                 return None
 
-            current_player_idx = 1 - current_player_idx
+            self.current_player_idx = 1 - self.current_player_idx
+
+    def _print_round_start(self):
+        print(f"\n  {CYAN}{'=' * 35}{RESET}")
+        print(f"  {BOLD}         INICIANDO RODADA{RESET}")
+        print(f"  {CYAN}{'=' * 35}{RESET}")
+        time.sleep(1)
+
+    def _print_score(self):
+        p1 = self.players[0]
+        p2 = self.players[1]
+        print(f"\n  {BOLD}[ PLACAR ]{RESET}")
+        print(f"  {RED}{p1.name}{RESET}: {GREEN}{p1.wins}{RESET}  |  {BLUE}{p2.name}{RESET}: {GREEN}{p2.wins}{RESET}")
+
+    def _print_victory(self, winner, win_line):
+        labels = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
+        line_str = " -> ".join(labels[i] for i in win_line)
+        color = RED if winner.marker == "X" else BLUE
+
+        print(f"\n  {color}{BOLD}==================================={RESET}")
+        print(f"  {color}{BOLD}    PARABENS! {winner.name} VENCEU!{RESET}")
+        print(f"  {color}{BOLD}==================================={RESET}")
+        print(f"\n  {YELLOW}Linha vencedora: {line_str}{RESET}")
+        print(f"  {DIM}Jogadas: {self.moves_count}{RESET}")
+        winner.wins += 1
+
+    def _print_draw(self):
+        print(f"\n  {YELLOW}{BOLD}==================================={RESET}")
+        print(f"  {YELLOW}{BOLD}           EMPATE!{RESET}")
+        print(f"  {YELLOW}{BOLD}==================================={RESET}")
+        print(f"\n  {DIM}Jogadas: {self.moves_count}{RESET}")
 
 class SeriesManager:
     def __init__(self):
-        pass
+        self.total_games_played = 0
 
     def main_menu(self):
         while True:
             os.system('cls' if os.name == 'nt' else 'clear')
-            print(f"{CYAN}{BOLD}==========================={RESET}")
-            print(f"{CYAN}{BOLD}      JOGO DA VELHA        {RESET}")
-            print(f"{CYAN}{BOLD}==========================={RESET}")
-            print(f"1. {RED}Humano vs Humano{RESET}")
-            print(f"2. {BLUE}Humano vs Computador{RESET}")
-            print("3. Sair")
-            choice = input(f"\n{BOLD}Escolha uma opção:{RESET} ")
+            self._print_header()
+            print(f"  {BOLD}1.{RESET} [H-H] Humano vs Humano")
+            print(f"  {BOLD}2.{RESET} [H-?) Humano vs Computador (Facil)")
+            print(f"  {BOLD}3.{RESET} [H-?] Humano vs Computador (Medio)")
+            print(f"  {BOLD}4.{RESET} [H-?] Humano vs Computador (Dificil)")
+            print(f"  {BOLD}5.{RESET} [i] Estatisticas")
+            print(f"  {BOLD}0.{RESET} [X] Sair")
+            print()
+
+            choice = input(f"  {BOLD}[>] Escolha uma opcao:{RESET} ").strip()
 
             if choice == '1':
-                self.start_series(mode="HvH")
+                self.start_series("HvH")
             elif choice == '2':
-                self.start_series(mode="HvC")
+                self.start_series("HvC", "easy")
             elif choice == '3':
-                print("Obrigado por jogar!")
+                self.start_series("HvC", "medium")
+            elif choice == '4':
+                self.start_series("HvC", "hard")
+            elif choice == '5':
+                self.show_stats()
+            elif choice == '0':
+                self._print_goodbye()
                 break
             else:
-                input("Opção inválida. Pressione Enter para tentar novamente.")
+                self._print_error()
+                input()
 
-    def start_series(self, mode):
+    def _print_header(self):
+        print(f"\n  {CYAN}==================================={RESET}")
+        print(f"  {CYAN}{BOLD}     JOGO DA VELHA{RESET}")
+        print(f"  {CYAN}==================================={RESET}\n")
+
+    def _print_error(self):
+        print(f"\n  {RED}[X] Opcao invalida!{RESET}")
+        time.sleep(1)
+
+    def _print_goodbye(self):
+        print(f"\n  {GREEN}Obrigado por jogar! Até logo!{RESET}\n")
+
+    def start_series(self, mode, difficulty="medium"):
+        os.system('cls' if os.name == 'nt' else 'clear')
+
         if mode == "HvH":
-            p1_name = input("Nome do Jogador 1 (X): ") or "Jogador 1"
-            p2_name = input("Nome do Jogador 2 (O): ") or "Jogador 2"
+            p1_name = self._get_name("Jogador 1")
+            p2_name = self._get_name("Jogador 2")
             p1 = HumanPlayer(p1_name, "X")
             p2 = HumanPlayer(p2_name, "O")
         else:
-            p1_name = input("Seu nome (X): ") or "Humano"
+            p1_name = self._get_name("Jogador")
             p1 = HumanPlayer(p1_name, "X")
-            p2 = AIPlayer("Computador", "O")
+            p2 = AIPlayer("Computador", "O", difficulty)
 
-        wins_p1 = 0
-        wins_p2 = 0
-        round_count = 1
+        wins_needed = 2
+        rounds = 1
 
-        while wins_p1 < 2 and wins_p2 < 2:
-            print(f"\n{BOLD}--- Iniciando Rodada {round_count} ---{RESET}")
-            print(f"{CYAN}Placar: {RED}{p1.name} {wins_p1}{RESET} x {BLUE}{wins_p2} {p2.name}{RESET}")
-            input(f"\nPressione {GREEN}Enter{RESET} para começar...")
-            
+        while p1.wins < wins_needed and p2.wins < wins_needed:
+            print(f"\n  {CYAN}{'-' * 40}{RESET}")
+            print(f"  {BOLD}[>] RODADA {rounds}{RESET}")
+            print(f"  {CYAN}{'-' * 40}{RESET}")
+
             game = TicTacToeGame(p1, p2)
+            input(f"\n  {GREEN}Pressione ENTER para comecar...{RESET}")
+
             winner = game.play_round()
+            self.total_games_played += 1
 
-            if winner == p1:
-                wins_p1 += 1
-            elif winner == p2:
-                wins_p2 += 1
-            
-            round_count += 1
-            if wins_p1 < 2 and wins_p2 < 2:
-                input("\nFim da rodada. Pressione Enter para a próxima...")
+            if p1.wins < wins_needed and p2.wins < wins_needed:
+                input(f"\n  {YELLOW}Pressione ENTER para proxima rodada...{RESET}")
+            rounds += 1
 
-        series_winner = p1.name if wins_p1 == 2 else p2.name
-        color = RED if wins_p1 == 2 else BLUE
-        print(f"\n{color}{BOLD}{'='*30}{RESET}")
-        print(f"{color}{BOLD}VENCEDOR FINAL DA SÉRIE: {series_winner}!{RESET}")
-        print(f"{color}{BOLD}Placar Final: {p1.name} {wins_p1} x {wins_p2} {p2.name}{RESET}")
-        print(f"{color}{BOLD}{'='*30}{RESET}")
-        
-        input("\nPressione Enter para voltar ao menu principal...")
+        self._print_series_end(p1, p2)
+        input(f"\n  {CYAN}Pressione ENTER para voltar ao menu...{RESET}")
+
+    def _get_name(self, default):
+        return input(f"\n  Nome do {default} (X): ").strip() or default
+
+    def _print_series_end(self, p1, p2):
+        winner = p1 if p1.wins >= 2 else p2
+        color = RED if winner == p1 else BLUE
+
+        print(f"\n  {color}{BOLD}==================================={RESET}")
+        print(f"  {color}{BOLD}      VENCEDOR DA SERIE!{RESET}")
+        print(f"  {color}{BOLD}==================================={RESET}")
+        print(f"\n  {color}{BOLD}>> {winner.name} com 2 vitorias!{RESET}")
+        print(f"\n  [ PLACAR FINAL ]")
+        print(f"  {RED}{p1.name}{RESET}: {GREEN}{p1.wins}{RESET}")
+        print(f"  {BLUE}{p2.name}{RESET}: {GREEN}{p2.wins}{RESET}")
+
+    def show_stats(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print(f"\n  {YELLOW}{BOLD}==================================={RESET}")
+        print(f"  {YELLOW}{BOLD}        ESTATISTICAS{RESET}")
+        print(f"  {YELLOW}{BOLD}==================================={RESET}")
+        print(f"\n  Partidas jogadas: {self.total_games_played}")
+        input(f"\n  {CYAN}Pressione ENTER para voltar...{RESET}")
 
 if __name__ == "__main__":
     manager = SeriesManager()
